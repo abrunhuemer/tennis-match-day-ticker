@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { formatEncounterDate } from '@/lib/format-date'
 import MatchCard from '@/components/matches/match-card'
+import CopyButton from '@/components/encounters/copy-button'
 import type { EncounterWithMatches } from '@/lib/query-types'
 
 export default async function EncounterPage({
@@ -82,12 +83,7 @@ export default async function EncounterPage({
                 value={shareUrl}
                 className="flex-1 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-mono text-gray-600"
               />
-              <button
-                onClick={() => {}}
-                className="px-2 py-1 rounded bg-green-600 text-white text-xs"
-              >
-                Kopieren
-              </button>
+              <CopyButton value={shareUrl} />
             </div>
           </div>
         </div>
