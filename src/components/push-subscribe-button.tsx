@@ -8,6 +8,13 @@ type Props = {
   vapidPublicKey: string
 }
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary)
+}
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -62,12 +69,10 @@ export default function PushSubscribeButton({ matchId, encounterId, vapidPublicK
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       })
 
-      const { p256dh, auth } = sub.getKey
-        ? {
-          p256dh: Buffer.from(sub.getKey('p256dh') as ArrayBuffer).toString('base64'),
-          auth: Buffer.from(sub.getKey('auth') as ArrayBuffer).toString('base64'),
-        }
-        : { p256dh: '', auth: '' }
+      const rawP256dh = sub.getKey('p256dh')
+      const rawAuth = sub.getKey('auth')
+      const p256dh = rawP256dh ? arrayBufferToBase64(rawP256dh) : ''
+      const auth = rawAuth ? arrayBufferToBase64(rawAuth) : ''
 
       await fetch('/api/subscriptions', {
         method: 'POST',

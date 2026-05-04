@@ -91,6 +91,7 @@ export default async function TickerPage({
       createdBy={match.created_by}
       encounterId={match.encounter?.id ?? null}
       encounterName={match.encounter?.name ?? null}
+      vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''}
     />
   )
 }

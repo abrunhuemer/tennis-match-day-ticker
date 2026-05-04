@@ -13,6 +13,7 @@ import { useRealtimeMatch } from '@/lib/use-realtime-match'
 import ScoreDisplay from './score-display'
 import CorrectionModal from './correction-modal'
 import EditRightsBar from './edit-rights-bar'
+import PushSubscribeButton from '@/components/push-subscribe-button'
 
 type Profile = {
   id: string
@@ -35,6 +36,7 @@ type Props = {
   createdBy: string | null
   encounterId: string | null
   encounterName: string | null
+  vapidPublicKey: string
 }
 
 export default function TickerClient({
@@ -51,6 +53,7 @@ export default function TickerClient({
   createdBy,
   encounterId,
   encounterName,
+  vapidPublicKey,
 }: Props) {
   const [state, setState] = useState<MatchState>(initialState)
   const [events, setEvents] = useState<ScoreEventRecord[]>(initialEvents)
@@ -186,7 +189,10 @@ export default function TickerClient({
               ← {encounterName}
             </Link>
           )}
-          <span className="ml-auto text-xs text-gray-400">Ticker</span>
+          <div className="ml-auto flex items-center gap-2">
+            <PushSubscribeButton matchId={matchId} vapidPublicKey={vapidPublicKey} />
+            <span className="text-xs text-gray-400">Ticker</span>
+          </div>
         </div>
       </header>
 
