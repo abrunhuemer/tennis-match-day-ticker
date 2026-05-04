@@ -51,7 +51,7 @@ export default function NewEncounterForm({ userId }: { userId: string }) {
           type="text"
           required
           placeholder="z.B. TC Rot-Weiß vs. TC Blau"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
         />
       </div>
 
@@ -64,7 +64,7 @@ export default function NewEncounterForm({ userId }: { userId: string }) {
           name="title"
           type="text"
           placeholder="z.B. Relegation 2025"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
         />
       </div>
 
@@ -78,7 +78,7 @@ export default function NewEncounterForm({ userId }: { userId: string }) {
           type="date"
           required
           defaultValue={new Date().toISOString().split('T')[0]}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
         />
       </div>
 
@@ -91,7 +91,7 @@ export default function NewEncounterForm({ userId }: { userId: string }) {
           name="location"
           type="text"
           placeholder="z.B. Tennisclub Musterstadt"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
         />
       </div>
 

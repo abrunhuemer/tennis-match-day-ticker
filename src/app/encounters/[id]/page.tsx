@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { formatEncounterDate } from '@/lib/format-date'
 import MatchCard from '@/components/matches/match-card'
@@ -40,7 +41,10 @@ export default async function EncounterPage({
   const wins1 = matches.filter(m => m.winner_team === 1).length
   const wins2 = matches.filter(m => m.winner_team === 2).length
 
-  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/e/${encounter.share_token}`
+  const headersList = await headers()
+  const host = headersList.get('host') ?? ''
+  const proto = headersList.get('x-forwarded-proto') ?? 'https'
+  const shareUrl = `${proto}://${host}/e/${encounter.share_token}`
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -96,7 +96,7 @@ export default function NewMatchForm({
               name="player1_name"
               required
               placeholder="Name"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
             />
           </div>
           <div>
@@ -107,7 +107,7 @@ export default function NewMatchForm({
               name="player3_name"
               required
               placeholder="Name"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
             />
           </div>
 
@@ -118,7 +118,7 @@ export default function NewMatchForm({
                 <input
                   name="player2_name"
                   placeholder="Name"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -126,7 +126,7 @@ export default function NewMatchForm({
                 <input
                   name="player4_name"
                   placeholder="Name"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
                 />
               </div>
             </>
@@ -144,7 +144,7 @@ export default function NewMatchForm({
             <select
               name="num_sets"
               defaultValue="3"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none bg-white"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none bg-white"
             >
               <option value="1">1 Satz</option>
               <option value="3">Best of 3</option>
@@ -157,7 +157,7 @@ export default function NewMatchForm({
             <select
               name="games_per_set"
               defaultValue="6"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none bg-white"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none bg-white"
             >
               <option value="4">4</option>
               <option value="6">6</option>
