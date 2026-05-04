@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   applyPoint,
@@ -60,8 +60,13 @@ export default function TickerClient({
   const [editHolderId, setEditHolderId] = useState<string | null>(initialEditHolderId)
   const [editStatus, setEditStatus] = useState<'free' | 'locked'>(initialEditStatus)
   const [holderProfile, setHolderProfile] = useState<Profile | null>(initialHolderProfile)
-  const [loading, setLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false) // only for undo/correction
   const [showCorrection, setShowCorrection] = useState(false)
+
+  // Ref-based state and queue so rapid clicks don't read stale closure values
+  const localStateRef = useRef<MatchState>(initialState)
+  const pointQueue = useRef<{ team: 1 | 2; before: MatchState; after: MatchState }[]>([])
+  const flushing = useRef(false)
 
   const isHolder = editHolderId === currentUserId
 
@@ -73,6 +78,7 @@ export default function TickerClient({
   useEffect(() => {
     if (!isHolder) {
       setState(rtState)
+      localStateRef.current = rtState
       setEvents(rtEvents)
     }
   }, [isHolder, rtState, rtEvents])
@@ -80,52 +86,64 @@ export default function TickerClient({
 
   const display = getDisplayScore(state)
 
-  const scorePoint = useCallback(async (team: 1 | 2) => {
-    if (!isHolder || isMatchDone || loading) return
-
-    // Optimistic update
-    const stateBefore = state
-    const stateAfter = applyPoint(state, team)
-    setState(stateAfter)
-    setLoading(true)
-
-    try {
-      const res = await fetch(`/api/matches/${matchId}/point`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ team, pointBefore: stateBefore, pointAfter: stateAfter }),
-      })
-
-      if (!res.ok) {
-        // Rollback
-        setState(stateBefore)
-        return
+  const flushPointQueue = useCallback(async () => {
+    if (flushing.current) return
+    flushing.current = true
+    while (pointQueue.current.length > 0) {
+      const item = pointQueue.current[0]
+      try {
+        const res = await fetch(`/api/matches/${matchId}/point`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ team: item.team, pointBefore: item.before, pointAfter: item.after }),
+        })
+        if (res.ok) {
+          const { event } = await res.json()
+          setEvents(prev => [...prev, event])
+          pointQueue.current.shift()
+        } else {
+          localStateRef.current = item.before
+          setState(item.before)
+          pointQueue.current = []
+          break
+        }
+      } catch {
+        localStateRef.current = item.before
+        setState(item.before)
+        pointQueue.current = []
+        break
       }
-
-      const { event } = await res.json()
-      setEvents(prev => [...prev, event])
-    } catch {
-      setState(stateBefore)
-    } finally {
-      setLoading(false)
     }
-  }, [isHolder, isMatchDone, loading, state, matchId])
+    flushing.current = false
+  }, [matchId])
+
+  const scorePoint = useCallback((team: 1 | 2) => {
+    if (!isHolder || isMatchDone) return
+    const stateBefore = localStateRef.current
+    const stateAfter = applyPoint(stateBefore, team)
+    localStateRef.current = stateAfter
+    setState(stateAfter)
+    pointQueue.current.push({ team, before: stateBefore, after: stateAfter })
+    flushPointQueue()
+  }, [isHolder, isMatchDone, flushPointQueue])
 
   const undo = useCallback(async () => {
-    if (!isHolder || loading || events.length === 0) return
+    if (!isHolder || actionLoading || events.length === 0) return
 
     const undoneState = undoLastPoint(state, events)
     const stateBefore = state
     setState(undoneState)
-    setLoading(true)
+    localStateRef.current = undoneState
+    pointQueue.current = []
+    setActionLoading(true)
 
     try {
       const res = await fetch(`/api/matches/${matchId}/undo`, { method: 'POST' })
       if (!res.ok) {
         setState(stateBefore)
+        localStateRef.current = stateBefore
         return
       }
-      // Mark last active event as undone
       setEvents(prev => {
         const lastActive = [...prev].reverse().find(e => !e.isUndone && e.eventType === 'point')
         if (!lastActive) return prev
@@ -133,25 +151,28 @@ export default function TickerClient({
       })
     } catch {
       setState(stateBefore)
+      localStateRef.current = stateBefore
     } finally {
-      setLoading(false)
+      setActionLoading(false)
     }
-  }, [isHolder, loading, events, state, matchId])
+  }, [isHolder, actionLoading, events, state, matchId])
 
   const changeServe = useCallback(async () => {
-    if (!isHolder || isMatchDone || loading) return
+    if (!isHolder || isMatchDone || actionLoading) return
 
     const newState = { ...state, servingTeam: state.servingTeam === 1 ? 2 as const : 1 as const }
     setState(newState)
     await fetch(`/api/matches/${matchId}/serve`, { method: 'POST' })
-  }, [isHolder, isMatchDone, loading, state, matchId])
+  }, [isHolder, isMatchDone, actionLoading, state, matchId])
 
   const applyCorrection = useCallback(async (correctedState: MatchState) => {
     if (!isHolder || isMatchDone) return
 
     const stateBefore = state
     setState(correctedState)
-    setLoading(true)
+    localStateRef.current = correctedState
+    pointQueue.current = []
+    setActionLoading(true)
 
     try {
       const res = await fetch(`/api/matches/${matchId}/correction`, {
@@ -159,11 +180,15 @@ export default function TickerClient({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ correctedState }),
       })
-      if (!res.ok) setState(stateBefore)
+      if (!res.ok) {
+        setState(stateBefore)
+        localStateRef.current = stateBefore
+      }
     } catch {
       setState(stateBefore)
+      localStateRef.current = stateBefore
     } finally {
-      setLoading(false)
+      setActionLoading(false)
     }
   }, [isHolder, isMatchDone, state, matchId])
 
@@ -231,7 +256,7 @@ export default function TickerClient({
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => scorePoint(1)}
-              disabled={!isHolder || loading}
+              disabled={!isHolder}
               className={`
                 h-24 rounded-2xl text-white text-lg font-bold shadow-sm
                 transition-all active:scale-95
@@ -248,7 +273,7 @@ export default function TickerClient({
 
             <button
               onClick={() => scorePoint(2)}
-              disabled={!isHolder || loading}
+              disabled={!isHolder}
               className={`
                 h-24 rounded-2xl text-white text-lg font-bold shadow-sm
                 transition-all active:scale-95
@@ -270,14 +295,14 @@ export default function TickerClient({
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={undo}
-              disabled={loading || events.filter(e => !e.isUndone && e.eventType === 'point').length === 0}
+              disabled={actionLoading || events.filter(e => !e.isUndone && e.eventType === 'point').length === 0}
               className="py-3 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-100 disabled:opacity-40"
             >
               ↩ Undo
             </button>
             <button
               onClick={changeServe}
-              disabled={loading}
+              disabled={actionLoading}
               className="py-3 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-100"
             >
               ● Aufschlag
