@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { formatEncounterDate } from '@/lib/format-date'
 import InviteUserForm from '@/components/auth/invite-user-form'
+import PWAInstallBanner from '@/components/pwa-install-banner'
 
 type EncounterWithMatches = {
   id: string
@@ -61,6 +62,8 @@ export default async function DashboardPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        <PWAInstallBanner />
+
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Begegnungen</h1>
           <Link
