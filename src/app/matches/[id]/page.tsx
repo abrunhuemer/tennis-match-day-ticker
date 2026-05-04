@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createInitialState, replayEvents, getDisplayScore, type MatchConfig, type ScoreEventRecord } from '@/lib/tennis-scoring'
+import ScoreDisplay from '@/components/ticker/score-display'
 import type { MatchWithEvents } from '@/lib/query-types'
 
 export default async function MatchDetailPage({
@@ -28,6 +30,28 @@ export default async function MatchDetailPage({
 
   const isHolder = match.edit_holder_id === user?.id
   const canTicker = user && (isHolder || match.edit_status === 'free')
+
+  const config: MatchConfig = {
+    numSets: match.num_sets,
+    gamesPerSet: match.games_per_set,
+    tiebreakSets: match.tiebreak_sets,
+    matchTiebreak: match.match_tiebreak,
+    noAd: match.no_ad,
+  }
+  const sortedEvents = [...(match.score_events ?? [])].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+  const events: ScoreEventRecord[] = sortedEvents.map(e => ({
+    id: e.id,
+    scoringTeam: e.scoring_team as 1 | 2 | null,
+    pointBefore: e.point_before as ScoreEventRecord['pointBefore'],
+    pointAfter: e.point_after as ScoreEventRecord['pointAfter'],
+    isUndone: e.is_undone,
+    eventType: e.event_type as ScoreEventRecord['eventType'],
+  }))
+  const initialState = createInitialState(config, 1)
+  const currentState = events.length > 0 ? replayEvents(config, 1, events) : initialState
+  const display = getDisplayScore(currentState)
 
   const teamA = match.type === 'doubles' && match.player2_name
     ? `${match.player1_name} / ${match.player2_name}`
@@ -74,12 +98,13 @@ export default async function MatchDetailPage({
           </div>
         </div>
 
-        {/* Score display placeholder — full implementation in Phase 7 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 text-center">
-          <p className="text-gray-400 text-sm">
-            Score-Anzeige wird in Phase 7 implementiert
-          </p>
-        </div>
+        <ScoreDisplay
+          display={display}
+          teamA={teamA}
+          teamB={teamB}
+          winner={currentState.winner}
+          status={currentState.status}
+        />
 
         {/* Edit rights */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
