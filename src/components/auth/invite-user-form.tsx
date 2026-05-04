@@ -61,7 +61,7 @@ export default function InviteUserForm({ invitedBy }: { invitedBy: string }) {
           onChange={e => setEmail(e.target.value)}
           placeholder="E-Mail-Adresse"
           required
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
         />
         <button
           type="submit"
