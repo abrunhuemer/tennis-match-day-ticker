@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatEncounterDate } from '@/lib/format-date'
 import MatchCard from '@/components/matches/match-card'
 import CopyButton from '@/components/encounters/copy-button'
+import FinishEncounterButton from '@/components/encounters/finish-encounter-button'
 import type { EncounterWithMatches } from '@/lib/query-types'
 
 export default async function EncounterPage({
@@ -21,7 +22,7 @@ export default async function EncounterPage({
   const { data: raw } = await supabase
     .from('encounters')
     .select(`
-      id, name, title, date, location, share_token, created_by,
+      id, name, title, date, location, share_token, created_by, finished_at,
       matches (
         id, type, order_index, status, winner_team,
         player1_name, player2_name, player3_name, player4_name,
@@ -95,12 +96,23 @@ export default async function EncounterPage({
         {/* Matches */}
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Spiele</h2>
-          <Link
-            href={`/encounters/${encounter.id}/new-match`}
-            className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
-          >
-            + Spiel
-          </Link>
+          <div className="flex items-center gap-2">
+            {encounter.finished_at ? (
+              <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-500 text-xs font-medium">Abgeschlossen</span>
+            ) : (
+              <>
+                {encounter.created_by === user.id && (
+                  <FinishEncounterButton encounterId={encounter.id} />
+                )}
+                <Link
+                  href={`/encounters/${encounter.id}/new-match`}
+                  className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
+                >
+                  + Spiel
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         {matches.length === 0 && (

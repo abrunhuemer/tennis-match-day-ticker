@@ -67,5 +67,6 @@ export type EncounterWithMatches = {
   location: string | null
   share_token: string
   created_by: string | null
+  finished_at: string | null
   matches: MatchSummary[]
 }

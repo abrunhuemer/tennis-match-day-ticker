@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatEncounterDate } from '@/lib/format-date'
 import InviteUserForm from '@/components/auth/invite-user-form'
 import PWAInstallBanner from '@/components/pwa-install-banner'
+import PushSubscribeButton from '@/components/push-subscribe-button'
 
 type EncounterWithMatches = {
   id: string
@@ -13,6 +14,7 @@ type EncounterWithMatches = {
   location: string | null
   share_token: string
   created_by: string | null
+  finished_at: string | null
   matches: { id: string; status: string; winner_team: number | null }[]
 }
 
@@ -26,7 +28,7 @@ export default async function DashboardPage() {
     supabase
       .from('encounters')
       .select(`
-        id, name, title, date, location, share_token, created_by,
+        id, name, title, date, location, share_token, created_by, finished_at,
         matches (id, status, winner_team)
       `)
       .order('date', { ascending: false }),
@@ -37,7 +39,13 @@ export default async function DashboardPage() {
       .single(),
   ])
 
-  const encounters = rawEncounters as EncounterWithMatches[] | null
+  const allEncounters = rawEncounters as EncounterWithMatches[] | null
+
+  // Hide encounters finished more than 24 hours ago
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000
+  const encounters = allEncounters?.filter(e =>
+    !e.finished_at || new Date(e.finished_at).getTime() > cutoff
+  ) ?? null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -48,6 +56,7 @@ export default async function DashboardPage() {
             <span className="font-bold text-gray-900">Tennis-Ticker</span>
           </div>
           <div className="flex items-center gap-3">
+            <PushSubscribeButton vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''} />
             {profile?.avatar_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full" />
@@ -97,12 +106,14 @@ export default async function DashboardPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-900 truncate">{encounter.name}</span>
-                      {running > 0 && (
+                      {encounter.finished_at ? (
+                        <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-medium">Abgeschlossen</span>
+                      ) : running > 0 ? (
                         <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                           Live
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     {encounter.title && (
                       <p className="text-sm text-gray-500 mt-0.5">{encounter.title}</p>

@@ -70,6 +70,7 @@ export default function TickerClient({
   const flushing = useRef(false)
 
   const isHolder = editHolderId === currentUserId
+  const isCreator = createdBy === currentUserId
 
   // Realtime syncs state for non-holders (spectators, other devices)
   const { state: rtState, events: rtEvents } =
@@ -170,7 +171,7 @@ export default function TickerClient({
   }, [isHolder, isMatchDone, actionLoading, state, matchId])
 
   const applyCorrection = useCallback(async (correctedState: MatchState) => {
-    if (!isHolder || isMatchDone) return
+    if (!isHolder && !isCreator) return
 
     const stateBefore = state
     setState(correctedState)
@@ -194,7 +195,7 @@ export default function TickerClient({
     } finally {
       setActionLoading(false)
     }
-  }, [isHolder, isMatchDone, state, matchId])
+  }, [isHolder, isCreator, state, matchId])
 
   // Keyboard shortcuts for desktop
   useEffect(() => {
@@ -301,7 +302,7 @@ export default function TickerClient({
           </div>
         )}
 
-        {/* Secondary controls */}
+        {/* Secondary controls — active match */}
         {isHolder && !isMatchDone && (
           <div className="grid grid-cols-3 gap-2">
             <button
@@ -325,6 +326,16 @@ export default function TickerClient({
               ✏ Korrektur
             </button>
           </div>
+        )}
+
+        {/* Correction button for finished matches (creator or holder) */}
+        {isMatchDone && (isCreator || isHolder) && (
+          <button
+            onClick={() => setShowCorrection(true)}
+            className="w-full py-3 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-100"
+          >
+            ✏ Ergebnis korrigieren
+          </button>
         )}
       </main>
 

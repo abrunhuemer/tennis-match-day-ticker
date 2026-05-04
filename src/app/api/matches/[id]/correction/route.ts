@@ -13,11 +13,14 @@ export async function POST(
 
   const { data: match } = await supabase
     .from('matches')
-    .select('edit_holder_id')
+    .select('edit_holder_id, created_by')
     .eq('id', id)
     .single()
 
-  if (!match || match.edit_holder_id !== user.id) {
+  const isHolder = match?.edit_holder_id === user.id
+  const isCreator = match?.created_by === user.id
+
+  if (!isHolder && !isCreator) {
     return NextResponse.json({ error: 'No edit rights' }, { status: 403 })
   }
 
@@ -34,6 +37,14 @@ export async function POST(
     })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Update match status and winner if the corrected state changes them
+  const newStatus = correctedState?.status ?? 'running'
+  const newWinner = correctedState?.winner ?? null
+  await supabase
+    .from('matches')
+    .update({ status: newStatus, winner_team: newWinner })
+    .eq('id', id)
 
   return NextResponse.json({ ok: true })
 }
