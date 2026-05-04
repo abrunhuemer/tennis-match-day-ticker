@@ -11,20 +11,18 @@ export async function POST(
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Atomically claim: only allowed when edit_status = 'free'
-  // RLS enforces that update on matches is only allowed for edit_holder or creator,
-  // so we use a raw query approach with a WHERE clause check
+  // Allow claiming when free, or re-claiming your own locked rights
   const { data, error } = await supabase
     .from('matches')
     .update({ edit_holder_id: user.id, edit_status: 'locked' })
     .eq('id', id)
-    .eq('edit_status', 'free')   // only claim when free
+    .or(`edit_status.eq.free,edit_holder_id.eq.${user.id}`)
     .select('id, edit_holder_id')
     .single()
 
   if (error || !data) {
     return NextResponse.json(
-      { error: 'Match ist nicht frei oder bereits übernommen.' },
+      { error: 'Match ist bereits von jemand anderem übernommen.' },
       { status: 409 }
     )
   }

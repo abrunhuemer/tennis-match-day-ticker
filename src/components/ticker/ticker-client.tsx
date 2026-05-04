@@ -62,6 +62,7 @@ export default function TickerClient({
   const [holderProfile, setHolderProfile] = useState<Profile | null>(initialHolderProfile)
   const [actionLoading, setActionLoading] = useState(false) // only for undo/correction
   const [showCorrection, setShowCorrection] = useState(false)
+  const [pointError, setPointError] = useState('')
 
   // Ref-based state and queue so rapid clicks don't read stale closure values
   const localStateRef = useRef<MatchState>(initialState)
@@ -101,16 +102,19 @@ export default function TickerClient({
           const { event } = await res.json()
           setEvents(prev => [...prev, event])
           pointQueue.current.shift()
+          setPointError('')
         } else {
           localStateRef.current = item.before
           setState(item.before)
           pointQueue.current = []
+          setPointError('Punkt konnte nicht gespeichert werden. Bitte versuche es erneut.')
           break
         }
       } catch {
         localStateRef.current = item.before
         setState(item.before)
         pointQueue.current = []
+        setPointError('Verbindungsfehler. Bitte versuche es erneut.')
         break
       }
     }
@@ -250,6 +254,13 @@ export default function TickerClient({
             setHolderProfile(null)
           }}
         />
+
+        {pointError && (
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+            <span>{pointError}</span>
+            <button onClick={() => setPointError('')} className="text-red-400 hover:text-red-600 flex-shrink-0">×</button>
+          </div>
+        )}
 
         {/* Ticker buttons — minimum 80px tall per spec */}
         {!isMatchDone && (

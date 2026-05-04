@@ -107,11 +107,14 @@ export default function EditRightsBar({
         </div>
       ) : isHolder ? (
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-gray-700 font-medium">Du tickerst gerade</p>
+          <div>
+            <p className="text-sm text-gray-700 font-medium">Du tickerst gerade</p>
+            <p className="text-xs text-gray-400">Tippe oben auf die Buttons, um Punkte einzutragen</p>
+          </div>
           <button
             onClick={release}
             disabled={loading}
-            className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-100 disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-100 disabled:opacity-50 flex-shrink-0"
           >
             {loading ? '...' : 'Freigeben'}
           </button>
