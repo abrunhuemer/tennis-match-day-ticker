@@ -32,10 +32,10 @@ export default function NewMatchForm({
       encounter_id: encounterId,
       type: matchType,
       order_index: nextOrderIndex,
-      player1_name: data.get('player1_name') as string,
-      player2_name: matchType === 'doubles' ? (data.get('player2_name') as string) : null,
-      player3_name: data.get('player3_name') as string,
-      player4_name: matchType === 'doubles' ? (data.get('player4_name') as string) : null,
+      player1_name: (data.get('player1_name') as string).trim() || 'Team 1',
+      player2_name: matchType === 'doubles' ? ((data.get('player2_name') as string).trim() || null) : null,
+      player3_name: (data.get('player3_name') as string).trim() || 'Team 2',
+      player4_name: matchType === 'doubles' ? ((data.get('player4_name') as string).trim() || null) : null,
       num_sets: parseInt(data.get('num_sets') as string),
       games_per_set: parseInt(data.get('games_per_set') as string),
       tiebreak_sets: data.get('tiebreak_sets') === 'true',
@@ -94,8 +94,7 @@ export default function NewMatchForm({
             </label>
             <input
               name="player1_name"
-              required
-              placeholder="Name"
+              placeholder="Team 1"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
             />
           </div>
@@ -105,8 +104,7 @@ export default function NewMatchForm({
             </label>
             <input
               name="player3_name"
-              required
-              placeholder="Name"
+              placeholder="Team 2"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none"
             />
           </div>

@@ -36,6 +36,7 @@ export type DisplayScore = {
   sets: Array<{ team1: number; team2: number; isTiebreak: boolean; isCurrent: boolean }>
   game: string  // "0:0", "15:30", "Einstand", "Vorteil"
   server: 1 | 2
+  advantage: 1 | 2 | null
 }
 
 export type ScoreEventRecord = {
@@ -286,7 +287,7 @@ export function getDisplayScore(state: MatchState): DisplayScore {
 
   const game = state.status === 'finished' ? '' : gameScoreLabel(state.currentGame)
 
-  return { sets, game, server: state.servingTeam }
+  return { sets, game, server: state.servingTeam, advantage: state.currentGame.advantage }
 }
 
 function gameScoreLabel(game: GameScore): string {

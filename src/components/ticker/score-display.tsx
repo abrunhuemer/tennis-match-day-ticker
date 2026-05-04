@@ -10,75 +10,73 @@ type Props = {
   status: string
 }
 
+function perTeamGameScore(display: DisplayScore): [string, string] {
+  const { game, advantage } = display
+  if (!game) return ['', '']
+  if (game === 'Einstand') return ['=', '=']
+  if (game === 'Vorteil') return advantage === 1 ? ['Ad', ''] : ['', 'Ad']
+  const [a, b] = game.split(':')
+  return [a ?? '', b ?? '']
+}
+
 export default function ScoreDisplay({ display, teamA, teamB, winner, status }: Props) {
+  const [gameA, gameB] = perTeamGameScore(display)
+  const isRunning = status === 'running'
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
-      {/* Set scores */}
-      {display.sets.length > 0 && (
-        <div className="flex justify-center gap-3">
-          {display.sets.map((set, i) => (
-            <div
-              key={i}
-              className={`text-center ${
-                set.isCurrent ? 'text-gray-900' : 'text-gray-400'
-              }`}
-            >
-              <div className={`text-2xl font-bold tabular-nums ${set.isCurrent ? '' : 'text-lg'}`}>
-                {set.team1}:{set.team2}
+    <div className="bg-white rounded-2xl border border-gray-200 p-5">
+      <div className="space-y-3">
+        {[1, 2].map(team => {
+          const name = team === 1 ? teamA : teamB
+          const isServer = display.server === team
+          const isWinner = winner === team
+          const gameScore = team === 1 ? gameA : gameB
+
+          return (
+            <div key={team} className="flex items-center gap-2">
+              {/* Serve indicator — fixed width so names stay aligned */}
+              <span className="w-3 flex-shrink-0 text-green-500 text-xs">
+                {isServer ? '●' : ''}
+              </span>
+
+              {/* Team name */}
+              <span className={`flex-1 font-semibold truncate text-base ${isWinner ? 'text-green-700' : 'text-gray-900'}`}>
+                {name}
+                {isWinner && <span className="ml-1.5 text-green-600 text-sm">✓</span>}
+              </span>
+
+              {/* Set scores */}
+              <div className="flex items-center gap-3 tabular-nums">
+                {display.sets.map((set, i) => (
+                  <span
+                    key={i}
+                    className={`text-xl font-bold w-6 text-center ${
+                      set.isCurrent
+                        ? 'text-gray-900'
+                        : 'text-gray-400 text-lg'
+                    }`}
+                  >
+                    {team === 1 ? set.team1 : set.team2}
+                  </span>
+                ))}
+
+                {/* Current game score */}
+                {isRunning && (
+                  <span className={`w-8 text-center font-bold tabular-nums text-lg ${
+                    gameScore === 'Ad' ? 'text-green-700' : 'text-gray-700'
+                  }`}>
+                    {gameScore}
+                  </span>
+                )}
               </div>
-              {set.isTiebreak && (
-                <div className="text-xs text-gray-400">TB</div>
-              )}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Teams and game score */}
-      <div className="space-y-2">
-        {/* Team A */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {display.server === 1 && (
-              <span className="text-green-500 text-lg flex-shrink-0">●</span>
-            )}
-            <span className={`font-semibold truncate ${
-              winner === 1 ? 'text-green-700' : 'text-gray-900'
-            }`}>
-              {teamA}
-              {winner === 1 && <span className="ml-1 text-green-600">✓</span>}
-            </span>
-          </div>
-        </div>
-
-        {/* Team B */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {display.server === 2 && (
-              <span className="text-green-500 text-lg flex-shrink-0">●</span>
-            )}
-            <span className={`font-semibold truncate ${
-              winner === 2 ? 'text-green-700' : 'text-gray-900'
-            }`}>
-              {teamB}
-              {winner === 2 && <span className="ml-1 text-green-600">✓</span>}
-            </span>
-          </div>
-        </div>
+          )
+        })}
       </div>
 
-      {/* Current game score */}
-      {status === 'running' && display.game && (
-        <div className="text-center border-t border-gray-100 pt-3">
-          <span className="text-3xl font-bold tabular-nums text-gray-800">
-            {display.game}
-          </span>
-        </div>
-      )}
-
       {status === 'finished' && (
-        <div className="text-center border-t border-gray-100 pt-3">
-          <span className="text-lg font-semibold text-green-700">Match beendet</span>
+        <div className="text-center border-t border-gray-100 mt-4 pt-3">
+          <span className="text-sm font-semibold text-green-700">Match beendet</span>
         </div>
       )}
     </div>
