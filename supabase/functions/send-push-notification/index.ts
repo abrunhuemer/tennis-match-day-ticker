@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import webpush from 'npm:web-push@3'
 
 // This Edge Function is triggered by a DB webhook on score_events INSERT.
 // It reads the point_after snapshot, determines the event type (game/set/match end),
@@ -7,6 +8,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY')!
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@tennis-ticker.app'
+
+webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
 
 type ScoreEventPayload = {
   type: 'INSERT'
@@ -28,29 +31,27 @@ type PointAfter = {
   currentGame?: { points: [number, number] }
 }
 
+function totalGames(state: PointAfter): number {
+  return (state.sets ?? []).reduce((sum, s) => sum + s.games[0] + s.games[1], 0)
+}
+
 function detectEventType(before: unknown, after: PointAfter): 'game' | 'set' | 'match' | null {
   if (!before || !after) return null
-
   const b = before as PointAfter
 
   // Match end
   if (after.status === 'finished' && after.winner) return 'match'
 
-  // Set end: number of completed sets changed
+  // Set end: number of completed sets increased
   const bSetsCompleted = (b.sets ?? []).filter(s => s.winner !== null).length
   const aSetsCompleted = (after.sets ?? []).filter(s => s.winner !== null).length
   if (aSetsCompleted > bSetsCompleted) return 'set'
 
-  // Game end: current set's game count increased
-  const bGames = (b.sets ?? [])[b.currentSet ?? 0]
-  const aGames = (after.sets ?? [])[after.currentSet ?? 0]
-  if (bGames && aGames) {
-    const bTotal = bGames.games[0] + bGames.games[1]
-    const aTotal = aGames.games[0] + aGames.games[1]
-    if (aTotal > bTotal) return 'game'
-  }
+  // Game end: total games across all sets increased
+  if (totalGames(after) > totalGames(b)) return 'game'
 
-  return 'game' // fallback for first game
+  // Mid-game point — no notification needed
+  return null
 }
 
 async function sendPushNotification(
@@ -59,35 +60,14 @@ async function sendPushNotification(
   title: string,
   body: string
 ) {
-  // Import web-push compatible library for Deno
-  const { generateVAPIDKeys, encrypt } = await import('npm:web-push@3')
-
-  const payload = JSON.stringify({ title, body, icon: '/icons/icon-192.png' })
-
-  // Build signed headers using VAPID
-  const details = {
-    endpoint,
-    keys,
-    vapidDetails: {
-      subject: VAPID_SUBJECT,
-      publicKey: VAPID_PUBLIC_KEY,
-      privateKey: VAPID_PRIVATE_KEY,
-    },
-  }
-
   try {
-    // Use web-push sendNotification equivalent for Deno
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Encoding': 'aes128gcm',
-        'TTL': '86400',
-      },
-      body: payload,
-    })
-    return response.ok
-  } catch {
+    await webpush.sendNotification(
+      { endpoint, keys },
+      JSON.stringify({ title, body })
+    )
+    return true
+  } catch (err) {
+    console.error('Push notification failed:', err)
     return false
   }
 }
@@ -147,7 +127,7 @@ Deno.serve(async (req) => {
       notifBody = `${setWinner} gewinnt ${lastSet.games[0]}:${lastSet.games[1]}`
     }
   } else {
-    // Game end
+    // Game end — show current set score
     const setIdx = pointAfter.currentSet ?? 0
     const set = currentSets[setIdx]
     if (set) {
@@ -156,30 +136,33 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Fetch subscriptions that should receive this notification
-  const query = supabase
+  // Determine which notify_on_* column to filter on
+  const notifyField =
+    eventType === 'game' ? 'notify_on_game' :
+    eventType === 'set'  ? 'notify_on_set'  :
+                           'notify_on_match'
+
+  // Fetch match-level subscriptions (query builder is immutable — chain the filter)
+  const { data: matchSubs } = await supabase
     .from('subscriptions')
     .select('push_endpoint, push_keys')
     .eq('match_id', event.match_id)
+    .eq(notifyField, true)
 
-  if (eventType === 'game') {
-    query.eq('notify_on_game', true)
-  } else if (eventType === 'set') {
-    query.eq('notify_on_set', true)
-  } else {
-    query.eq('notify_on_match', true)
-  }
-
-  const { data: subs } = await query
-
-  // Also fetch encounter-level subscriptions
+  // Fetch encounter-level subscriptions
   const { data: encounterSubs } = await supabase
     .from('subscriptions')
     .select('push_endpoint, push_keys')
     .eq('encounter_id', match.encounter_id)
-    .eq(eventType === 'match' ? 'notify_on_match' : 'notify_on_set', true)
+    .eq(notifyField, true)
 
-  const allSubs = [...(subs ?? []), ...(encounterSubs ?? [])]
+  // Deduplicate by endpoint
+  const seen = new Set<string>()
+  const allSubs = [...(matchSubs ?? []), ...(encounterSubs ?? [])].filter(sub => {
+    if (seen.has(sub.push_endpoint)) return false
+    seen.add(sub.push_endpoint)
+    return true
+  })
 
   await Promise.allSettled(
     allSubs.map(sub =>
