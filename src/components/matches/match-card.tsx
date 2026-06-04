@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { getDisplayScore, type MatchState, type DisplayScore } from '@/lib/tennis-scoring'
 
 type ScoreEvent = {
   id: string
@@ -41,18 +42,20 @@ function teamName(match: Match, team: 1 | 2): string {
     : match.player3_name
 }
 
-function getLastScore(events: ScoreEvent[]): { sets: string; game: string } | null {
+function getMatchDisplay(events: ScoreEvent[]): DisplayScore | null {
   const active = events.filter(e => !e.is_undone && e.event_type !== 'undo')
   const last = active.at(-1)
   if (!last?.point_after) return null
+  return getDisplayScore(last.point_after as MatchState)
+}
 
-  const after = last.point_after as {
-    sets?: Array<{ games: [number, number] }>
-    currentGame?: { points: [number, number]; isDeuce?: boolean; advantage?: 1 | 2 | null }
-  }
-
-  const sets = (after.sets ?? []).map(s => `${s.games[0]}:${s.games[1]}`).join(' ')
-  return { sets, game: '' }
+function perTeamGameScore(display: DisplayScore): [string, string] {
+  const { game, advantage } = display
+  if (!game) return ['', '']
+  if (game === 'Einstand') return ['=', '=']
+  if (game === 'Vorteil') return advantage === 1 ? ['Ad', ''] : ['', 'Ad']
+  const [a, b] = game.split(':')
+  return [a ?? '', b ?? '']
 }
 
 const STATUS_LABELS: Record<Match['status'], string> = {
@@ -70,59 +73,76 @@ export default function MatchCard({
   currentUserId?: string
 }) {
   const isHolder = match.edit_holder_id === currentUserId
-  const isCreator = match.created_by === currentUserId
   const canTicker = isHolder || (match.edit_status === 'free' && !!currentUserId)
-  const score = match.score_events ? getLastScore(match.score_events) : null
+  const display = match.score_events ? getMatchDisplay(match.score_events) : null
+  const [gameA, gameB] = display ? perTeamGameScore(display) : ['', '']
+  const isRunning = match.status === 'running'
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  match.status === 'running'
-                    ? 'bg-green-100 text-green-700'
-                    : match.status === 'finished'
-                    ? 'bg-gray-100 text-gray-600'
-                    : 'bg-amber-50 text-amber-600'
-                }`}
-              >
-                {STATUS_LABELS[match.status]}
-              </span>
-              <span className="text-xs text-gray-400">
-                {match.type === 'doubles' ? 'Doppel' : 'Einzel'}
-              </span>
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-sm font-medium ${
-                    match.winner_team === 1 ? 'text-green-700' : 'text-gray-900'
-                  }`}
-                >
-                  {teamName(match, 1)}
-                </span>
-                {match.winner_team === 1 && <span className="text-green-600 text-xs">✓</span>}
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-sm font-medium ${
-                    match.winner_team === 2 ? 'text-green-700' : 'text-gray-900'
-                  }`}
-                >
-                  {teamName(match, 2)}
-                </span>
-                {match.winner_team === 2 && <span className="text-green-600 text-xs">✓</span>}
-              </div>
-            </div>
-
-            {score?.sets && (
-              <p className="text-sm text-gray-500 mt-2 font-mono">{score.sets}</p>
-            )}
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                match.status === 'running'
+                  ? 'bg-green-100 text-green-700'
+                  : match.status === 'finished'
+                  ? 'bg-gray-100 text-gray-600'
+                  : 'bg-amber-50 text-amber-600'
+              }`}
+            >
+              {STATUS_LABELS[match.status]}
+            </span>
+            <span className="text-xs text-gray-400">
+              {match.type === 'doubles' ? 'Doppel' : 'Einzel'}
+            </span>
           </div>
+        </div>
+
+        {/* Teams with scores per row */}
+        <div className="space-y-2">
+          {([1, 2] as const).map(team => {
+            const name = teamName(match, team)
+            const isWinner = match.winner_team === team
+            const gameScore = team === 1 ? gameA : gameB
+
+            return (
+              <div key={team} className="flex items-center gap-2">
+                <span
+                  className={`flex-1 text-sm font-medium truncate ${
+                    isWinner ? 'text-green-700' : 'text-gray-900'
+                  }`}
+                >
+                  {name}
+                  {isWinner && <span className="ml-1 text-green-600 text-xs">✓</span>}
+                </span>
+
+                {/* Set and game scores */}
+                {display && (
+                  <div className="flex items-center gap-2.5 tabular-nums flex-shrink-0">
+                    {display.sets.map((set, i) => (
+                      <span
+                        key={i}
+                        className={`text-sm font-bold w-5 text-center ${
+                          set.isCurrent ? 'text-gray-900' : 'text-gray-400'
+                        }`}
+                      >
+                        {team === 1 ? set.team1 : set.team2}
+                      </span>
+                    ))}
+                    {isRunning && gameScore && (
+                      <span className={`text-sm font-medium w-7 text-center ${
+                        gameScore === 'Ad' ? 'text-green-700' : 'text-gray-500'
+                      }`}>
+                        {gameScore}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -142,9 +162,6 @@ export default function MatchCard({
           >
             {isHolder ? 'Tickern' : match.edit_status === 'free' ? 'Übernehmen & Tickern' : 'Ticker (nur ansehen)'}
           </Link>
-        )}
-        {isCreator && match.status === 'pending' && (
-          <span className="ml-auto text-xs text-gray-400">Erstellt von dir</span>
         )}
       </div>
     </div>

@@ -175,7 +175,7 @@ export default function NewMatchForm({
             name="match_tiebreak"
             label="Match-Tiebreak"
             description="10-Punkte-Tiebreak statt letztem Satz"
-            defaultValue={true}
+            defaultValue={false}
           />
           <ToggleField
             name="no_ad"
